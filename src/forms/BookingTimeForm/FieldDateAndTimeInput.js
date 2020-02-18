@@ -7,6 +7,8 @@ import {
   getEndHours,
   isInRange,
   isSameDate,
+  isSameMonth,
+  isNextMonth,
   isDayMomentInsideRange,
   resetToStartOfDay,
   timeOfDayFromLocalToTimeZone,
@@ -188,6 +190,7 @@ class FieldDateAndTimeInput extends Component {
 
     this.state = {
       currentMonth: getMonthStartInTimeZone(TODAY, props.timeZone),
+      currentMonthOnEndDateInput: getMonthStartInTimeZone(TODAY, props.timeZone),
     };
 
     this.fetchMonthData = this.fetchMonthData.bind(this);
@@ -218,22 +221,24 @@ class FieldDateAndTimeInput extends Component {
     }
   }
 
-  onMonthClick(monthFn) {
+  onMonthClick(monthFn, stateKey='currentMonth') {
     const { onMonthChanged, timeZone } = this.props;
 
     this.setState(
-      prevState => ({ currentMonth: monthFn(prevState.currentMonth, timeZone) }),
+      prevState => ({ [stateKey]: monthFn(prevState[stateKey], timeZone) }),
       () => {
+        const currentMonth = this.state[stateKey];
         // Callback function after month has been updated.
         // react-dates component has next and previous months ready (but inivisible).
         // we try to populate those invisible months before user advances there.
-        this.fetchMonthData(monthFn(this.state.currentMonth, timeZone));
+        this.fetchMonthData(monthFn(currentMonth, timeZone));
 
         // If previous fetch for month data failed, try again.
-        const monthId = monthIdStringInTimeZone(this.state.currentMonth, timeZone);
+        const monthId = monthIdStringInTimeZone(currentMonth, timeZone);
         const currentMonthData = this.props.monthlyTimeSlots[monthId];
+
         if (currentMonthData && currentMonthData.fetchTimeSlotsError) {
-          this.fetchMonthData(this.state.currentMonth, timeZone);
+          this.fetchMonthData(currentMonth, timeZone);
         }
 
         // Call onMonthChanged function if it has been passed in among props.
@@ -253,7 +258,10 @@ class FieldDateAndTimeInput extends Component {
         form.change('bookingEndTime', null);
       });
       // Reset the currentMonth too if bookingStartDate is cleared
-      this.setState({ currentMonth: getMonthStartInTimeZone(TODAY, timeZone) });
+      this.setState({
+        currentMonth: getMonthStartInTimeZone(TODAY, timeZone),
+        currentMonthOnEndDateInput: getMonthStartInTimeZone(TODAY, timeZone),
+      });
 
       return;
     }
@@ -270,6 +278,11 @@ class FieldDateAndTimeInput extends Component {
       timeSlotsOnSelectedDate,
       startDate
     );
+
+    this.setState({
+      currentMonth: getMonthStartInTimeZone(startDate, timeZone),
+      currentMonthOnEndDateInput: getMonthStartInTimeZone(endDate, timeZone),
+    });
 
     form.batch(() => {
       form.change('bookingStartTime', startTime);
@@ -327,6 +340,14 @@ class FieldDateAndTimeInput extends Component {
   };
 
   isOutsideRange(day, bookingStartDate, selectedTimeSlot, timeZone) {
+    const localizedDay = timeOfDayFromLocalToTimeZone(day, timeZone);
+    const startDate = resetToStartOfDay(bookingStartDate, timeZone);
+    // Hard-coded end of continuous time-slot
+    const endDate = resetToStartOfDay(new Date(new Date('2020-04-15T21:00:00.000Z') - 1), timeZone, 1);
+
+    return !(dateIsAfter(localizedDay, startDate) && dateIsAfter(endDate, localizedDay))
+
+    /*
     if (!selectedTimeSlot) {
       return true;
     }
@@ -336,12 +357,72 @@ class FieldDateAndTimeInput extends Component {
     const localizedDay = timeOfDayFromLocalToTimeZone(day, timeZone);
     // Given day (endDate) should be after the start of the day of selected booking start date.
     const startDate = resetToStartOfDay(bookingStartDate, timeZone);
+
+    // If "day" is before bookingStartDate, it's outside range
+    if (!dateIsAfter(localizedDay, startDate)) {
+      return true;
+    }
+
     // 00:00 would return wrong day as the end date.
     // Removing 1 millisecond, solves the exclusivity issue.
     const inclusiveEnd = new Date(selectedTimeSlot.attributes.end.getTime() - 1);
-    // Given day (endDate) should be before the "next" day of selected timeSlots end.
-    const endDate = resetToStartOfDay(inclusiveEnd, timeZone, 1);
-    return !(dateIsAfter(localizedDay, startDate) && dateIsAfter(endDate, localizedDay));
+
+    const hasNextMonthBoundary = isNextMonth(localizedDay, inclusiveEnd, timeZone);
+
+    if (!hasNextMonthBoundary) {
+
+      // Given day (localizedDay) should be before the "next" day of selected timeSlots end.
+      const endDate = resetToStartOfDay(inclusiveEnd, timeZone, 1);
+
+      // timeSlot's end should be after the current "day"
+      return !dateIsAfter(endDate, localizedDay);
+
+    } else {
+      const { monthlyTimeSlots } = this.props;
+
+      // Recursive fn
+      const isMonthOutsideRange = (month, targetDay, monthlyTimeSlots, timeZone) => {
+        const ts = getMonthlyTimeSlots(monthlyTimeSlots, month, timeZone);
+
+        // If there's no timeSlots, the day is outside of range.
+        if (ts.length === 0) {
+          return true;
+        }
+
+        const firstTimeSlot = ts[0];
+        const isContinuousTimeSlot = firstTimeSlot.attributes.start.getTime() === month.getTime();
+        // If the next timeSlot is not continuous, the day is outside of range.
+        if (!isContinuousTimeSlot) {
+          return true;
+        }
+
+        const targetMonth = getMonthStartInTimeZone(targetDay, timeZone);// this.state.currentMonthOnEndDateInput;
+        const isTargetMonth = isSameMonth(month, targetMonth, timeZone);
+
+        if (isTargetMonth) {
+          const tsEnd = firstTimeSlot.attributes.end;
+
+          // 00:00 would return wrong day as the end date.
+          // Removing 1 millisecond, solves the exclusivity issue.
+          const inclusiveEnd = new Date(tsEnd.getTime() - 1);
+
+          // Given day (targetDay) should be before the "next" day of selected timeSlots end.
+          const endDate = resetToStartOfDay(inclusiveEnd, timeZone, 1);
+
+          return !dateIsAfter(endDate, targetDay);
+        } else {
+
+
+          const n = getMonthStartInTimeZone(targetDay, timeZone);
+          return isMonthOutsideRange(n, targetDay, monthlyTimeSlots, timeZone);
+        }
+      }
+
+      const nextMonth = getMonthStartInTimeZone(selectedTimeSlot.attributes.end, timeZone);
+
+      return isMonthOutsideRange(nextMonth, localizedDay, monthlyTimeSlots, timeZone);
+    }
+    */
   }
 
   render() {
@@ -369,13 +450,18 @@ class FieldDateAndTimeInput extends Component {
     const endDateDisabled = !bookingStartDate || !bookingStartTime;
     const endTimeDisabled = !bookingStartDate || !bookingStartTime || !bookingEndDate;
 
-    const timeSlotsOnSelectedMonth = getMonthlyTimeSlots(
+    const timeSlotsOnSelectedMonth = stateKey => getMonthlyTimeSlots(
       monthlyTimeSlots,
-      this.state.currentMonth,
+      this.state[stateKey],
       timeZone
     );
-    const timeSlotsOnSelectedDate = getTimeSlots(
-      timeSlotsOnSelectedMonth,
+
+    const timeSlotsOnSelectedStartDate = getTimeSlots(
+      getMonthlyTimeSlots(
+        monthlyTimeSlots,
+        getMonthStartInTimeZone(bookingStartDate || this.state.currentMonth, timeZone),
+        timeZone
+      ),
       bookingStartDate,
       timeZone
     );
@@ -384,13 +470,16 @@ class FieldDateAndTimeInput extends Component {
       intl,
       timeZone,
       bookingStartDate,
-      timeSlotsOnSelectedDate
+      timeSlotsOnSelectedStartDate
     );
 
     const firstAvailableStartTime =
       availableStartTimes.length > 0 && availableStartTimes[0] && availableStartTimes[0].timestamp
         ? availableStartTimes[0].timestamp
         : null;
+
+    // TODO add timeslots from future months too.
+    const timeSlotsOnSelectedDate = timeSlotsOnSelectedStartDate;
 
     const { startTime, endDate, selectedTimeSlot } = getAllTimeValues(
       intl,
@@ -409,17 +498,20 @@ class FieldDateAndTimeInput extends Component {
       selectedTimeSlot
     );
 
-    const isDayBlocked = timeSlotsOnSelectedMonth
-      ? day =>
-          !timeSlotsOnSelectedMonth.find(timeSlot =>
+    const isDayBlocked = (ts) => {
+      return ts ? day => {
+          const f = ts.find(timeSlot =>
             isDayMomentInsideRange(
               day,
               timeSlot.attributes.start,
               timeSlot.attributes.end,
               timeZone
             )
-          )
+          );
+          return !f;
+        }
       : () => false;
+    };
 
     const placeholderTime = localizeAndFormatTime(
       intl,
@@ -440,7 +532,7 @@ class FieldDateAndTimeInput extends Component {
     return (
       <div className={classes}>
         <div className={css.formRow}>
-          <div className={classNames(css.field, css.startDate)}>
+          <div className={classNames(css.field)}>
             <FieldDateInput
               className={css.fieldDateInput}
               name="bookingStartDate"
@@ -453,7 +545,7 @@ class FieldDateAndTimeInput extends Component {
               parse={v =>
                 v && v.date ? { date: timeOfDayFromLocalToTimeZone(v.date, timeZone) } : v
               }
-              isDayBlocked={isDayBlocked}
+              isDayBlocked={isDayBlocked(timeSlotsOnSelectedMonth('currentMonth'))}
               onChange={this.onBookingStartDateChange}
               onPrevMonthClick={() => this.onMonthClick(prevMonthFn)}
               onNextMonthClick={() => this.onMonthClick(nextMonthFn)}
@@ -464,39 +556,6 @@ class FieldDateAndTimeInput extends Component {
               validate={bookingDateRequired('Required')}
             />
           </div>
-        </div>
-        <div className={css.formRow}>
-          <div className={classNames(css.field, css.endDateHidden)}>
-            <FieldDateInput
-              {...endDateInputProps}
-              name="bookingEndDate"
-              id={formId ? `${formId}.bookingEndDate` : 'bookingEndDate'}
-              className={css.fieldDateInput}
-              label={endDateInputProps.label}
-              placeholderText={endDateInputProps.placeholderText}
-              format={v =>
-                v && v.date ? { date: timeOfDayFromTimeZoneToLocal(v.date, timeZone) } : v
-              }
-              parse={v =>
-                v && v.date ? { date: timeOfDayFromLocalToTimeZone(v.date, timeZone) } : v
-              }
-              isDayBlocked={isDayBlocked}
-              onChange={this.onBookingEndDateChange}
-              onPrevMonthClick={() => this.onMonthClick(prevMonthFn)}
-              onNextMonthClick={() => this.onMonthClick(nextMonthFn)}
-              navNext={<Next currentMonth={this.state.currentMonth} timeZone={timeZone} />}
-              navPrev={<Prev currentMonth={this.state.currentMonth} timeZone={timeZone} />}
-              isOutsideRange={day =>
-                this.isOutsideRange(day, bookingStartDate, selectedTimeSlot, timeZone)
-              }
-              useMobileMargins
-              showErrorMessage={false}
-              validate={bookingDateRequired('Required')}
-              disabled={endDateDisabled}
-              showLabelAsDisabled={endDateDisabled}
-            />
-          </div>
-
           <div className={css.field}>
             <FieldSelect
               name="bookingStartTime"
@@ -519,7 +578,50 @@ class FieldDateAndTimeInput extends Component {
             </FieldSelect>
           </div>
 
-          <div className={bookingStartDate ? css.lineBetween : css.lineBetweenDisabled}>-</div>
+        </div>
+        <div className={css.formRow}>
+          <div className={classNames(css.field)}>
+            <FieldDateInput
+              {...endDateInputProps}
+              name="bookingEndDate"
+              id={formId ? `${formId}.bookingEndDate` : 'bookingEndDate'}
+              className={css.fieldDateInput}
+              label={endDateInputProps.label}
+              placeholderText={endDateInputProps.placeholderText}
+              format={v =>
+                v && v.date ? { date: timeOfDayFromTimeZoneToLocal(v.date, timeZone) } : v
+              }
+              parse={v =>
+                v && v.date ? { date: timeOfDayFromLocalToTimeZone(v.date, timeZone) } : v
+              }
+              onChange={this.onBookingEndDateChange}
+              onPrevMonthClick={(params) => {
+                console.log('asdf', params.toISOString());
+                this.onMonthClick(prevMonthFn, 'currentMonthOnEndDateInput');
+              }}
+              onNextMonthClick={() => this.onMonthClick(nextMonthFn, 'currentMonthOnEndDateInput')}
+              onClose={() =>
+                this.setState({
+                  currentMonthOnEndDateInput: getMonthStartInTimeZone(endDate || bookingStartDate, timeZone),
+                })
+              }
+              navNext={<Next currentMonth={this.state.currentMonthOnEndDateInput} timeZone={timeZone} />}
+              navPrev={<Prev currentMonth={this.state.currentMonthOnEndDateInput} timeZone={timeZone} />}
+              isOutsideRange={day => {
+                  const isOut = this.isOutsideRange(day, bookingStartDate, selectedTimeSlot, timeZone);
+                  console.log(day.toISOString(), 'isOut', isOut);
+                  return isOut;
+                }
+              }
+              useMobileMargins
+              showErrorMessage={false}
+              validate={bookingDateRequired('Required')}
+              disabled={endDateDisabled}
+              showLabelAsDisabled={endDateDisabled}
+            />
+          </div>
+
+          {/*<div className={bookingStartDate ? css.lineBetween : css.lineBetweenDisabled}>-</div>*/}
 
           <div className={css.field}>
             <FieldSelect

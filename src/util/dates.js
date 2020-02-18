@@ -706,6 +706,18 @@ export const nextMonthFn = (currentMoment, timeZone) => {
         .toDate();
 };
 
+export const isSameMonth = (date1, date2, timeZone) => {
+  const d1 = timeZone ? moment(date1).tz(timeZone) : moment(date1);
+  const d2 = timeZone ? moment(date2).tz(timeZone) : moment(date2);
+  return d1.isSame(d2, 'month');
+};
+
+export const isNextMonth = (date1, date2, timeZone) => {
+  const d1 = timeZone ? moment(date1).tz(timeZone) : moment(date1);
+  const d2 = timeZone ? moment(date2).tz(timeZone) : moment(date2);
+  return d1.isAfter(d2, 'month');
+};
+
 /**
  * Formats Date object to localized strings mapped inside object literal:
  * { date, time, dateAndTime }

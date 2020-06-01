@@ -8,9 +8,9 @@ import { NamedLink } from '../../components';
 
 import css from './SectionLocations.css';
 
-import nyImage from './images/ny-yogi.jpg';
-import laImage from './images/la-yogi.jpg';
-import sfImage from './images/sf-yogi.jpg';
+import nyImage from './images/dsm-pet.jpg';
+import laImage from './images/la-pet.jpg';
+import sfImage from './images/sf-pet.jpg';
 
 class LocationImage extends Component {
   render() {
@@ -51,17 +51,17 @@ const SectionLocations = props => {
       </div>
       <div className={css.locations}>
         {locationLink(
-          'New York',
+          'Des Moines, Iowa',
           nyImage,
-          '?address=New%20York%20City%2C%20New%20York%2C%20USA&bounds=40.917576401307%2C-73.7008392055224%2C40.477399%2C-74.2590879797556'
+          '?address=Des%20Moines%2C%20Iowa%2C%20United%20States%20of%20America&bounds=41.6960730158812%2C-93.5030808953427%2C41.4864009878118%2C-93.76818101'
         )}
         {locationLink(
-          'Los Angeles',
+          'Minneapolis, Minnesota',
           laImage,
-          '?address=Los%20Angeles%2C%20California%2C%20USA&bounds=34.161440999758%2C-118.121305008073%2C33.9018913203336%2C-118.521456965901'
+          '?address=Minneapolis%2C%20Minnesota%2C%20United%20States%20of%20America&bounds=45.2129120199004%2C-93.1424192660975%2C44.7853009858284%2C-93.5226540199391'
         )}
         {locationLink(
-          'San Francisco',
+          'San Francisco, California',
           sfImage,
           '?address=San%20Francisco%2C%20California%2C%20USA&bounds=37.8324430069081%2C-122.354995082683%2C37.6044780500533%2C-122.517910874663'
         )}

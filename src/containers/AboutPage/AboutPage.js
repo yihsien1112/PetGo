@@ -35,52 +35,61 @@ const AboutPage = () => {
         </LayoutWrapperTopbar>
 
         <LayoutWrapperMain className={css.staticPageWrapper}>
-          <h1 className={css.pageTitle}>Find new depths in your yoga practice</h1>
+          <h1 className={css.pageTitle}>Find the best for your pet.</h1>
           <img className={css.coverImage} src={image} alt="My first ice cream." />
 
           <div className={css.contentWrapper}>
             <div className={css.contentSide}>
-              <p>Yoga was listed by UNESCO as an intangible cultural heritage.</p>
+              <h2>Did you know?</h2>
+              <br></br>
+              <p>Pets have been kept by humans since prehistoric times, 
+              and almost every single culture around the world has a history of pets.</p>
+              <br></br>
+              <p>Domesticated for more than 10,000 years, the dog was one of the first animals domesticated by human.</p>
+              <br></br>
+              <p>The word "pet" comes from the Middle English word "petty", meaning "small".</p>
+              <br></br>
             </div>
 
             <div className={css.contentMain}>
-              <h2>
-                Each yoga practitioner is an individual, and each one of us needs different care.
-                Working together with an experienced yoga teacher offers the possibility to rise
-                our practise to a whole new level.
-              </h2>
+              <h2>Having a pet should not be a struggle.</h2>
 
               <p>
-                Whether it is the alignment of asanas or being able to set the focus of the class,
-                we all have our own struggles and goals. Some of these cannot be addressed in a
-                regular class of twenty yogis. Working together with the experienced yoga teachers
-                from Yogatime, you can together create just the right class for you.
+                Whether it is a change of schedule at work, a sudden relocation, or an unexpected circumstance,
+                we all have our own struggles to forcefully leave our fur buddies at home by themselves.
+                Some of these cannot be addressed in a short amount of time. Working with experienced pet sitters in PetGo,
+                you can find the nearest and cheapest solution.
               </p>
 
-              <h3 className={css.subtitle}>Are you a yoga teacher?</h3>
+              <br></br>
+
+              <h2>Find the best for your pet.</h2>
 
               <p>
-                Yogatime offers you a platform through which you can reach thousands of yoga
-                practitioners. Offering private yoga classes through Yogatime offers you a
-                possibility to grow your customer base and earn some extra income on top of your
-                regular classes.
+                Each pet is an individual, and each one of them needs different care.
+                Working together with specific experienced pet sitter develops a whole new level of 
+                bonding with your pet.
               </p>
 
-              <h3 id="contact" className={css.subtitle}>
-                Create your own marketplace like Yogatime
-              </h3>
+              <br></br>
+
+              <h2>Not just cats and dogs.</h2>
+
               <p>
-                Yogatime is brought to you by{' '}
-                <ExternalLink href="http://sharetribe.com">Sharetribe</ExternalLink>. Sharetribe
-                offers anyone a possibility to create a marketplace without restricting your own
-                creativity. Do not hesitate to reach out and learn how to best turn your
-                marketplace idea to reality.
+                In PetGo, we welcome all kinds of pet (legal according to the state's law). We believe even your eight-legged arachnids 
+                and ghoti friends need companies too. All you need is to find the right pet sitter.
               </p>
+
+              <br></br>
+
+              <h2>Do you have experience owning a pet?</h2>
+
               <p>
-                You can also checkout our{' '}
-                <ExternalLink href={siteFacebookPage}>Facebook</ExternalLink> and{' '}
-                <ExternalLink href={siteTwitterPage}>Twitter</ExternalLink>.
+                PetGo offers you a platform through which you can reach thousands of pet owners in need. Offering pet sitting services 
+                through PetGo to make some income spending time with animals you love!
               </p>
+
+             
             </div>
           </div>
         </LayoutWrapperMain>
